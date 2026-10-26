@@ -913,7 +913,7 @@ function viewBookings(){
     var tabsHtml='<div class="adm-tabs">'+
       '<button class="adm-tab" aria-selected="'+(tab==='bookings')+'" data-act="admtab" data-tab="bookings">All Bookings</button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='drivers')+'" data-act="admtab" data-tab="drivers"><span class="ldot"></span> Active Drivers ('+(state.liveDrivers.length)+')</button>'+
-      '<button class="adm-tab" aria-selected="'+(tab==='pending')+'' data-act="admtab" data-tab="pending">Pending Drivers ('+(state.pendingDrivers.length)+')'+'<span style="'+(state.pendingDrivers.length>0?'background:#FBE3E3;color:#A62A2A;border-radius:999px;padding:1px 7px;font-size:.78rem;margin-left:4px;font-weight:700':'')+'">'+(state.pendingDrivers.length>0?state.pendingDrivers.length+'!':'')+'</span></button>'+
+      '<button class="adm-tab" aria-selected="'+(tab==='pending')+'" data-act="admtab" data-tab="pending">Pending Drivers ('+(state.pendingDrivers.length)+') '+(state.pendingDrivers.length>0?'<span style=\"background:#FBE3E3;color:#A62A2A;border-radius:999px;padding:1px 7px;font-size:.78rem;margin-left:4px;font-weight:700\">'+state.pendingDrivers.length+'!</span>':'')+'</button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='trips')+'" data-act="admtab" data-tab="trips"><span class="ldot"></span> Active Trips ('+(state.activeTrips.length)+')</button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='passengers')+'" data-act="admtab" data-tab="passengers"><span class="ldot"></span> Active Passengers ('+(state.activePassengers.length)+')</button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='map')+'" data-act="admtab" data-tab="map">Live Map</button>'+
