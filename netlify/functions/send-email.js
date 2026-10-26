@@ -93,7 +93,60 @@ exports.handler = async function (event) {
 </body>
 </html>`;
 
+  const adminRows = [
+    ['Ref',        d.ref],
+    ['Ride',       d.rideType],
+    ['Date',       d.date + ' at ' + d.slot],
+    ['Client',     d.clientName || '—'],
+    ['Email',      d.clientEmail],
+    ['Phone',      d.clientPhone || '—'],
+    ['Company',    d.company || '—'],
+    ['Guests',     String(d.guests || '')],
+    ['Hours',      String(d.hours || '')],
+    ['Pick-up',    d.pick],
+    ['Drop-off',   d.drop || d.pick],
+    ['Payment',    d.pay || '—'],
+    ['Agent',      d.agency ? d.agency + ' · ' + d.agentEmail : 'Direct'],
+    ['Total',      fmt(d.total, d.cur)],
+  ];
+
+  const adminTableRows = adminRows.map(function (r, i) {
+    const isTotal = r[0] === 'Total';
+    return (
+      '<tr style="background:' + (isTotal ? '#DDF4EA' : i % 2 === 0 ? '#ffffff' : '#F8FAFD') + '">' +
+      '<td style="padding:8px 14px;font-size:13px;color:#4B5F82;width:38%' + (isTotal ? ';font-weight:700;color:#0B7A55' : '') + '">' + r[0] + '</td>' +
+      '<td style="padding:8px 14px;font-size:13px;font-weight:600;color:' + (isTotal ? '#0B7A55' : '#0A1E45') + '">' + r[1] + '</td>' +
+      '</tr>'
+    );
+  }).join('');
+
+  const adminHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F1F6FC;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F1F6FC;padding:32px 0">
+  <tr><td align="center">
+    <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(5,42,104,.1)">
+      <tr><td style="background:#043A8B;padding:22px 28px">
+        <h1 style="margin:0;color:#fff;font-size:20px;font-weight:800">Flu<span style="color:#08A9E9">Tour</span> — New Booking</h1>
+      </td></tr>
+      <tr><td style="padding:24px 28px">
+        <p style="margin:0 0 16px;font-size:22px;font-weight:800;color:#0A1E45;font-family:monospace">${d.ref}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #D3DFF0;border-radius:10px;overflow:hidden">
+          ${adminTableRows}
+        </table>
+      </td></tr>
+      <tr><td style="background:#E6EEF9;padding:14px 28px;font-size:12px;color:#4B5F82;text-align:center">
+        FluTour Admin — <a href="https://flutour.com" style="color:#043A8B">flutour.com</a>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
   try {
+    // Send client confirmation
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -114,6 +167,21 @@ exports.handler = async function (event) {
       console.error('Resend error:', res.status, body);
       return { statusCode: 502, body: 'Email delivery failed' };
     }
+
+    // Send admin notification (fire-and-forget — don't block the response)
+    fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'FluTour <bookings@flutour.com>',
+        to: ['admin@app.flutour.com'],
+        subject: 'New Booking — ' + d.ref + ' (' + (d.clientName || d.clientEmail) + ')',
+        html: adminHtml,
+      }),
+    }).catch(function(e) { console.error('admin-email error:', e); });
 
     return {
       statusCode: 200,
