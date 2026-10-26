@@ -1266,6 +1266,31 @@ function onSubmit(e){
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({ref:b.ref,clientName:b.name,clientEmail:b.email,agentEmail:s.email,rideType:T.label||l.type,date:b.date,slot:b.slot,guests:b.guests,pick:b.pick,drop:b.drop,total:b.total,cur:b.cur,agency:b.agency})
       }).catch(function(e){ console.error('email',e); });
+      // Notify admin of new website booking
+      db.collection('mail').add({
+        to:'admin@app.flutour.com',
+        message:{
+          subject:'New Booking — '+b.ref+' ('+esc(b.name)+')',
+          html:'<h2>New Booking on FluTour</h2>'+
+            '<table style="border-collapse:collapse;width:100%;max-width:520px">'+
+            '<tr><td style="padding:6px 12px;color:#4B5F82">Ref</td><td style="padding:6px 12px;font-weight:bold;font-family:monospace">'+b.ref+'</td></tr>'+
+            '<tr style="background:#F1F6FC"><td style="padding:6px 12px;color:#4B5F82">Ride</td><td style="padding:6px 12px">'+esc(l.title)+'</td></tr>'+
+            '<tr><td style="padding:6px 12px;color:#4B5F82">Date</td><td style="padding:6px 12px">'+b.date+' at '+b.slot+'</td></tr>'+
+            '<tr style="background:#F1F6FC"><td style="padding:6px 12px;color:#4B5F82">Client</td><td style="padding:6px 12px">'+esc(b.name)+'</td></tr>'+
+            '<tr><td style="padding:6px 12px;color:#4B5F82">Email</td><td style="padding:6px 12px">'+esc(b.email)+'</td></tr>'+
+            '<tr style="background:#F1F6FC"><td style="padding:6px 12px;color:#4B5F82">Phone</td><td style="padding:6px 12px">'+esc(b.phone)+'</td></tr>'+
+            (b.company?'<tr><td style="padding:6px 12px;color:#4B5F82">Company</td><td style="padding:6px 12px">'+esc(b.company)+'</td></tr>':'')+
+            '<tr style="background:#F1F6FC"><td style="padding:6px 12px;color:#4B5F82">Guests</td><td style="padding:6px 12px">'+b.guests+'</td></tr>'+
+            '<tr><td style="padding:6px 12px;color:#4B5F82">Hours</td><td style="padding:6px 12px">'+b.hours+'</td></tr>'+
+            '<tr style="background:#F1F6FC"><td style="padding:6px 12px;color:#4B5F82">Pickup</td><td style="padding:6px 12px">'+esc(b.pick||'—')+'</td></tr>'+
+            '<tr><td style="padding:6px 12px;color:#4B5F82">Drop-off</td><td style="padding:6px 12px">'+esc(b.drop||'—')+'</td></tr>'+
+            '<tr style="background:#F1F6FC"><td style="padding:6px 12px;color:#4B5F82">Payment</td><td style="padding:6px 12px">'+b.pay+'</td></tr>'+
+            (b.agency?'<tr><td style="padding:6px 12px;color:#4B5F82">Agent</td><td style="padding:6px 12px">'+esc(b.agency)+' &middot; '+esc(b.agent)+'</td></tr>':'')+
+            '<tr style="background:#DDF4EA"><td style="padding:6px 12px;color:#0B7A55;font-weight:bold">Total</td><td style="padding:6px 12px;color:#0B7A55;font-weight:bold">'+fmtMoney(b.total,b.cur)+'</td></tr>'+
+            '</table>'
+        },
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(function(e){ console.error('admin-mail',e); });
       state.bookings.unshift(b);
       state.last=b; state.errors={};
       if(cbtn) cbtn.disabled=false;
