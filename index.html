@@ -571,7 +571,7 @@ auth.onAuthStateChanged(function(user){
       state.session={kind:kind,uid:user.uid,email:user.email,agency:ag.agency,rep:ag.rep};
       var _lp=kind==="admin"?loadAllBookings():loadBookings(user.email); if(kind==="admin") startAdminLive(); return _lp;
     }).then(function(){
-      if(state.view==="loading"||state.view==="gate") state.view="home";
+      if(state.view==="loading"||state.view==="gate") state.view=isAdmin()?"bookings":"home";
       renderFooter(); render();
     }).catch(function(e){ console.error('auth',e); state.view="gate"; renderFooter(); render(); });
   } else {
@@ -610,7 +610,7 @@ function renderHeader(){
    '<header class="top"><div class="wrap top-in">'+
    '<button class="brand" data-act="home" aria-label="FluTour home"><img src="'+LOGO+'" alt="" width="40" height="40"><span class="word">Flu<b>Tour</b></span></button>'+
    '<nav class="nav" aria-label="Main">'+acct+(authed?'<button class="navlink" data-act="bookings">'+icon("calendar")+'<span class="lbl2">'+(isAdmin()?'Admin Dashboard':'My bookings')+'</span>'+(isAdmin()?'':'<span class="count num">'+n+'</span>')+'</button>':'')+'</nav></div></header>'+
-   (state.view==="home"||state.view==="gate"?"":'<div class="pricebar"><div class="wrap pb-in"><span class="pb-lbl">'+icon("tag","sm")+' Nationality</span><div class="seg wide" role="group" aria-label="Nationality"><button data-act="cur" data-cur="EGP" aria-pressed="'+(state.currency==="EGP")+'">Egyptian <b>EGP</b></button><button data-act="cur" data-cur="USD" aria-pressed="'+(state.currency==="USD")+'">Non-Egyptian or company <b>USD</b></button></div></div></div>');
+   (state.view==="home"||state.view==="gate"||isAdmin()?"":'<div class="pricebar"><div class="wrap pb-in"><span class="pb-lbl">'+icon("tag","sm")+' Nationality</span><div class="seg wide" role="group" aria-label="Nationality"><button data-act="cur" data-cur="EGP" aria-pressed="'+(state.currency==="EGP")+'">Egyptian <b>EGP</b></button><button data-act="cur" data-cur="USD" aria-pressed="'+(state.currency==="USD")+'">Non-Egyptian or company <b>USD</b></button></div></div>');
 }
 function renderFooter(){
   document.getElementById("ftr").innerHTML =
@@ -912,7 +912,8 @@ function curSegHtml(cur){
   return '<div class="cur-seg">'+
     '<button data-act="admcur" data-cur="all" aria-pressed="'+(cur==='all')+'">All</button>'+
     '<button data-act="admcur" data-cur="EGP" aria-pressed="'+(cur==='EGP')+'">Egyptian <b>EGP</b></button>'+
-    '<button data-act="admcur" data-cur="USD" aria-pressed="'+(cur==='USD')+'">Non-Egyptian / Company <b>USD</b></button>'+
+    '<button data-act="admcur" data-cur="USD" aria-pressed="'+(cur==='USD')+'">Non-Egyptian <b>USD</b></button>'+
+    '<button data-act="admcur" data-cur="COMP" aria-pressed="'+(cur==='COMP')+'">Company <b>USD</b></button>'+
     '</div>';
 }
 function viewBookings(){
@@ -929,7 +930,12 @@ function viewBookings(){
     var body='';
     if(tab==='bookings'){
       var cur=state.adminCur||'all';
-      var all=state.bookings.filter(function(b){ return cur==='all'||b.cur===cur; });
+      var all=state.bookings.filter(function(b){
+        if(cur==='all') return true;
+        if(cur==='COMP') return b.cur==='USD'&&!!(b.company&&b.company.trim());
+        if(cur==='USD') return b.cur==='USD'&&!(b.company&&b.company.trim());
+        return b.cur===cur;
+      });
       var allBookings=state.bookings;
       var conf=all.filter(function(b){return b.status==="confirmed";});
       var egpT=allBookings.filter(function(b){return b.cur==="EGP"&&b.status==="confirmed";}).reduce(function(s,b){return s+b.total;},0);
@@ -1001,6 +1007,8 @@ function viewBookings(){
       var cur=state.adminCur||'all';
       var trps=state.activeTrips.filter(function(t){
         var tc=t.currency||'EGP';
+        if(cur==='COMP') return tc==='USD'&&!!(t.company&&t.company.trim());
+        if(cur==='USD') return tc==='USD'&&!(t.company&&t.company.trim());
         return cur==='all'||tc===cur;
       });
       body=curSegHtml(cur)+'<div class="live-list">'+(trps.length?trps.map(function(t){
@@ -1017,6 +1025,8 @@ function viewBookings(){
       var cur=state.adminCur||'all';
       var psgs=state.activePassengers.filter(function(p){
         var pc=p.currency||'EGP';
+        if(cur==='COMP') return pc==='USD'&&!!(p.company&&p.company.trim());
+        if(cur==='USD') return pc==='USD'&&!(p.company&&p.company.trim());
         return cur==='all'||pc===cur;
       });
       body=curSegHtml(cur)+'<div class="live-list">'+(psgs.length?psgs.map(function(p){
