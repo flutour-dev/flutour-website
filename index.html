@@ -502,7 +502,7 @@ function score(l){ return l.rating*10+Math.min(l.reviews,600)/100; }
 var todayISO = iso(new Date());
 var DEFAULT_FILTERS = {minRating:0,dur:"any",priv:false,pickup:false};
 var state = {
-  view:"loading", adminTab:"bookings", liveDrivers:[], activeTrips:[], activePassengers:[], time:"", pickup:"", dropoff:"", agents:[], session:null, authTab:"in", auth:{rep:"",agency:"",license:"",phone:"",email:""}, flash:null, type:"felucca", area:"", date:iso(addDays(new Date(),1)), guests:2, hours:1, currency:"EGP",
+  view:"loading", adminTab:"bookings", liveDrivers:[], pendingDrivers:[], activeTrips:[], activePassengers:[], time:"", pickup:"", dropoff:"", agents:[], session:null, authTab:"in", auth:{rep:"",agency:"",license:"",phone:"",email:""}, flash:null, type:"felucca", area:"", date:iso(addDays(new Date(),1)), guests:2, hours:1, currency:"EGP",
   filters:Object.assign({},DEFAULT_FILTERS), sort:"recommended", filtersOpen:false,
   sel:null, slot:null, pay:"site", errors:{}, form:{name:"",email:"",phone:"",company:"",pick:"",drop:"",ptime:"",notes:""},
   last:null, bookings:[], askCancel:null
@@ -855,6 +855,10 @@ var _adminUnsubs=[];var _adminMap=null;var _adminMapMarkers=[];
 function clearAdminListeners(){_adminUnsubs.forEach(function(u){try{u();}catch(e){}});_adminUnsubs=[];}
 function startAdminLive(){
   clearAdminListeners();
+  _adminUnsubs.push(db.collection('drivers').where('status','==','pending').onSnapshot(function(snap){
+    state.pendingDrivers=snap.docs.map(function(d){var o=d.data();o.uid=d.id;return o;});
+    if(state.view==='bookings'&&state.adminTab==='pending'){render();}
+  }));
   _adminUnsubs.push(db.collection('drivers').where('status','==','approved').onSnapshot(function(snap){
     state.liveDrivers=snap.docs.map(function(d){var o=d.data();o.uid=d.id;return o;});
     if(state.view==='bookings'&&state.adminTab==='drivers'){render();}
@@ -909,6 +913,7 @@ function viewBookings(){
     var tabsHtml='<div class="adm-tabs">'+
       '<button class="adm-tab" aria-selected="'+(tab==='bookings')+'" data-act="admtab" data-tab="bookings">All Bookings</button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='drivers')+'" data-act="admtab" data-tab="drivers"><span class="ldot"></span> Active Drivers ('+(state.liveDrivers.length)+')</button>'+
+      '<button class="adm-tab" aria-selected="'+(tab==='pending')+'' data-act="admtab" data-tab="pending">Pending Drivers ('+(state.pendingDrivers.length)+')'+'<span style="'+(state.pendingDrivers.length>0?'background:#FBE3E3;color:#A62A2A;border-radius:999px;padding:1px 7px;font-size:.78rem;margin-left:4px;font-weight:700':'')+'">'+(state.pendingDrivers.length>0?state.pendingDrivers.length+'!':'')+'</span></button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='trips')+'" data-act="admtab" data-tab="trips"><span class="ldot"></span> Active Trips ('+(state.activeTrips.length)+')</button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='passengers')+'" data-act="admtab" data-tab="passengers"><span class="ldot"></span> Active Passengers ('+(state.activePassengers.length)+')</button>'+
       '<button class="adm-tab" aria-selected="'+(tab==='map')+'" data-act="admtab" data-tab="map">Live Map</button>'+
@@ -950,6 +955,38 @@ function viewBookings(){
           '<div style="font-size:.82rem;color:var(--muted)">'+esc(d.phone||'')+'</div>'+
           '</div>'+rating+' '+badge+'</div>';
       }).join(''):'<div class="empty"><h3>No active drivers</h3><p>Approved drivers appear here when online.</p></div>')+'</div>';
+    } else if(tab==='pending'){
+      var pdrvs=state.pendingDrivers;
+      body='<div class="live-list">'+(pdrvs.length?pdrvs.map(function(d){
+        var hasPhoto=d.photoUrl&&d.photoUrl.length>4;
+        var hasVehicle=d.vehiclePhotoUrl&&d.vehiclePhotoUrl.length>4;
+        var hasLicense=d.licensePhotoUrl&&d.licensePhotoUrl.length>4;
+        var photos='';
+        if(hasPhoto||hasVehicle||hasLicense){
+          photos='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">';
+          if(hasPhoto) photos+='<div><div style="font-size:.75rem;color:var(--muted);margin-bottom:3px">Photo</div><img src="'+esc(d.photoUrl)+'" style="width:80px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"></div>';
+          if(hasVehicle) photos+='<div><div style="font-size:.75rem;color:var(--muted);margin-bottom:3px">Vehicle</div><img src="'+esc(d.vehiclePhotoUrl)+'" style="width:80px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"></div>';
+          if(hasLicense) photos+='<div><div style="font-size:.75rem;color:var(--muted);margin-bottom:3px">License</div><img src="'+esc(d.licensePhotoUrl)+'" style="width:80px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"></div>';
+          photos+='</div>';
+        }
+        var noLicenseWarn=!hasLicense?'<div style="background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:6px 10px;font-size:.82rem;margin-top:8px">⚠ No license uploaded — verify before approving</div>':'';
+        return '<div class="live-card" style="flex-direction:column;align-items:stretch">'+
+          '<div style="display:flex;align-items:center;gap:14px">'+
+          '<div class="lav">'+( d.name?d.name[0].toUpperCase():'?')+'</div>'+
+          '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:700;font-size:1rem">'+esc(d.name||'—')+'</div>'+
+          '<div style="color:var(--muted);font-size:.88rem">'+esc(d.vehicleType||'—')+' · '+esc(d.vehicleId||'—')+'</div>'+
+          '<div style="font-size:.82rem;color:var(--muted)">'+esc(d.phone||'')+'</div>'+
+          '</div>'+
+          '<span class="lbadge warn">Pending</span>'+
+          '</div>'+
+          photos+noLicenseWarn+
+          '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">'+
+          '<button class="btn btn-ghost btn-sm" data-act="reject-driver" data-uid="'+esc(d.uid)+'" data-name="'+esc(d.name||'')+'">Reject</button>'+
+          '<button class="btn btn-primary btn-sm" data-act="approve-driver" data-uid="'+esc(d.uid)+'" data-name="'+esc(d.name||'')+'">Approve</button>'+
+          '</div>'+
+          '</div>';
+      }).join(''):'<div class="empty"><h3>No pending drivers</h3><p>New driver registrations awaiting approval appear here.</p></div>')+'</div>';
     } else if(tab==='trips'){
       var trps=state.activeTrips;
       body='<div class="live-list">'+(trps.length?trps.map(function(t){
@@ -1029,6 +1066,25 @@ function onClick(e){
   else if(a==="authtab"){ state.authTab=d.tab; state.errors={}; render(); }
   else if(a==="bookings"){ state.askCancel=null; go(isAgent()||isAdmin()?"bookings":"gate"); }
   else if(a==="admtab"){ state.adminTab=d.tab; render(); if(d.tab==='map') initAdminMap(); }
+  else if(a==="approve-driver"){
+    var uid=d.uid,name=d.name;
+    if(!uid)return;
+    db.collection('drivers').doc(uid).update({status:'approved'}).then(function(){
+      var idx=state.pendingDrivers.findIndex(function(x){return x.uid===uid;});
+      if(idx>-1) state.pendingDrivers.splice(idx,1);
+      render();
+      alert('Driver '+name+' approved!');
+    }).catch(function(e){alert('Error: '+e.message);});
+  }
+  else if(a==="reject-driver"){
+    var uid=d.uid,name=d.name;
+    if(!uid||!confirm('Reject and remove '+name+'?'))return;
+    db.collection('drivers').doc(uid).update({status:'rejected'}).then(function(){
+      var idx=state.pendingDrivers.findIndex(function(x){return x.uid===uid;});
+      if(idx>-1) state.pendingDrivers.splice(idx,1);
+      render();
+    }).catch(function(e){alert('Error: '+e.message);});
+  }
   else if(a==="cur"){ state.currency=d.cur; var y=window.scrollY; render(); window.scrollTo(0,y); }
   else if(a==="type"){ state.type=d.type; document.querySelectorAll(".tab").forEach(function(b){ b.setAttribute("aria-selected",String(b.dataset.type===state.type)); }); var lbl=document.getElementById("s-glbl"); if(lbl) lbl.textContent=whoLabel(); }
   else if(a==="browse"){ state.type=d.type; resetFilters(); go("results"); }
