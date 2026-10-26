@@ -609,7 +609,7 @@ function renderHeader(){
   document.getElementById("hdr").innerHTML =
    '<header class="top"><div class="wrap top-in">'+
    '<button class="brand" data-act="home" aria-label="FluTour home"><img src="'+LOGO+'" alt="" width="40" height="40"><span class="word">Flu<b>Tour</b></span></button>'+
-   '<nav class="nav" aria-label="Main">'+acct+(authed?'<button class="navlink" data-act="bookings">'+icon("calendar")+'<span class="lbl2">'+(isAdmin()?'Admin Dashboard':'My bookings')+'</span><span class="count num">'+n+'</span></button>':'')+'</nav></div></header>'+
+   '<nav class="nav" aria-label="Main">'+acct+(authed?'<button class="navlink" data-act="bookings">'+icon("calendar")+'<span class="lbl2">'+(isAdmin()?'Admin Dashboard':'My bookings')+'</span>'+(isAdmin()?'':'<span class="count num">'+n+'</span>')+'</button>':'')+'</nav></div></header>'+
    (state.view==="home"||state.view==="gate"?"":'<div class="pricebar"><div class="wrap pb-in"><span class="pb-lbl">'+icon("tag","sm")+' Nationality</span><div class="seg wide" role="group" aria-label="Nationality"><button data-act="cur" data-cur="EGP" aria-pressed="'+(state.currency==="EGP")+'">Egyptian <b>EGP</b></button><button data-act="cur" data-cur="USD" aria-pressed="'+(state.currency==="USD")+'">Non-Egyptian or company <b>USD</b></button></div></div></div>');
 }
 function renderFooter(){
