@@ -146,42 +146,47 @@ exports.handler = async function (event) {
 </html>`;
 
   try {
-    // Send client confirmation
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'FluTour <bookings@flutour.com>',
-        to: [d.clientEmail],
-        cc: [d.agentEmail],
-        subject: 'Your FluTour booking ' + d.ref + ' is confirmed',
-        html: html,
+    // Send client confirmation and admin notification in parallel
+    const [clientRes, adminRes] = await Promise.all([
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'FluTour <bookings@flutour.com>',
+          to: [d.clientEmail],
+          cc: [d.agentEmail],
+          subject: 'Your FluTour booking ' + d.ref + ' is confirmed',
+          html: html,
+        }),
       }),
-    });
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'FluTour <bookings@flutour.com>',
+          to: ['admin@app.flutour.com'],
+          subject: 'New Booking — ' + d.ref + ' (' + (d.clientName || d.clientEmail) + ')',
+          html: adminHtml,
+        }),
+      }),
+    ]);
 
-    if (!res.ok) {
-      const body = await res.text();
-      console.error('Resend error:', res.status, body);
+    if (!clientRes.ok) {
+      const body = await clientRes.text();
+      console.error('Resend client error:', clientRes.status, body);
       return { statusCode: 502, body: 'Email delivery failed' };
     }
 
-    // Send admin notification (fire-and-forget — don't block the response)
-    fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'FluTour <bookings@flutour.com>',
-        to: ['admin@app.flutour.com'],
-        subject: 'New Booking — ' + d.ref + ' (' + (d.clientName || d.clientEmail) + ')',
-        html: adminHtml,
-      }),
-    }).catch(function(e) { console.error('admin-email error:', e); });
+    if (!adminRes.ok) {
+      const body = await adminRes.text();
+      console.error('Resend admin error:', adminRes.status, body);
+    }
 
     return {
       statusCode: 200,
