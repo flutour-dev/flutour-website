@@ -256,6 +256,11 @@ textarea.input{padding:10px 12px;min-height:92px;resize:vertical}
 .bk .act{padding:14px 16px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;justify-content:space-between;text-align:right}
 .pill{display:inline-block;font-size:.78rem;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--ok-bg);color:var(--ok)}
 .pill.off{background:var(--bad-bg);color:var(--bad)}
+.adm-badge{display:inline-block;font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--warn-bg);color:var(--warn);letter-spacing:.04em}
+.adm-stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:22px}
+.adm-stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 20px;display:flex;flex-direction:column;gap:3px;min-width:130px}
+.adm-n{font-family:var(--font-display);font-size:1.55rem;font-weight:800;color:var(--fg)}
+.adm-l{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .page-h{padding-top:28px}
 .page-h h1{font-size:clamp(1.7rem,3.4vw,2.3rem);font-weight:800}
 
@@ -503,6 +508,11 @@ function loadBookings(email){
     state.bookings=snap.docs.map(function(d){ var b=d.data(); b._id=d.id; return b; });
   }).catch(function(e){ console.error('loadBookings',e); state.bookings=[]; });
 }
+function loadAllBookings(){
+  return db.collection('bookings').orderBy('createdAt','desc').get().then(function(snap){
+    state.bookings=snap.docs.map(function(d){ var b=d.data(); b._id=d.id; return b; });
+  }).catch(function(e){ console.error('loadAllBookings',e); state.bookings=[]; });
+}
 
 function slotInfo(l,date,t){
   if(date===todayISO){
@@ -531,7 +541,9 @@ function nearestSlot(l,date,time){
   return best;
 }
 function isAgent(){ return !!(state.session&&state.session.kind==="agent"); }
+function isAdmin(){ return !!(state.session&&state.session.kind==="admin"); }
 function myBookings(){
+  if(isAdmin()) return state.bookings;
   if(!isAgent()) return [];
   return state.bookings.filter(function(b){ return b.agent===state.session.email; });
 }
@@ -551,8 +563,9 @@ auth.onAuthStateChanged(function(user){
     db.collection('agents').doc(user.uid).get().then(function(doc){
       if(!doc.exists){ return auth.signOut(); }
       var ag=doc.data();
-      state.session={kind:"agent",uid:user.uid,email:user.email,agency:ag.agency,rep:ag.rep};
-      return loadBookings(user.email);
+      var kind=ag.role==="admin"?"admin":"agent";
+      state.session={kind:kind,uid:user.uid,email:user.email,agency:ag.agency,rep:ag.rep};
+      return kind==="admin"?loadAllBookings():loadBookings(user.email);
     }).then(function(){
       if(state.view==="loading"||state.view==="gate") state.view="home";
       renderFooter(); render();
@@ -585,13 +598,14 @@ function wavesSvg(){
 /* ---------- header / footer ---------- */
 function renderHeader(){
   var n=myBookings().filter(function(b){return b.status==="confirmed";}).length, s=state.session;
-  var acct = isAgent()
-    ? '<span class="agent-chip" title="'+esc(s.rep)+'"><i>'+esc(s.agency.charAt(0).toUpperCase())+'</i><span class="chip-t">'+esc(s.agency)+'</span></span><button class="navlink" data-act="signout" aria-label="Sign out">'+icon("out")+'<span class="lbl2">Sign out</span></button>'
+  var authed=isAgent()||isAdmin();
+  var acct = authed
+    ? '<span class="agent-chip" title="'+esc(s.rep)+'"><i>'+esc(s.agency.charAt(0).toUpperCase())+'</i><span class="chip-t">'+esc(s.agency)+'</span></span>'+(isAdmin()?'<span class="adm-badge">Admin</span>':'')+'<button class="navlink" data-act="signout" aria-label="Sign out">'+icon("out")+'<span class="lbl2">Sign out</span></button>'
     : '';
   document.getElementById("hdr").innerHTML =
    '<header class="top"><div class="wrap top-in">'+
    '<button class="brand" data-act="home" aria-label="FluTour home"><img src="'+LOGO+'" alt="" width="40" height="40"><span class="word">Flu<b>Tour</b></span></button>'+
-   '<nav class="nav" aria-label="Main">'+acct+(isAgent()?'<button class="navlink" data-act="bookings">'+icon("calendar")+'<span class="lbl2">My bookings</span><span class="count num">'+n+'</span></button>':'')+'</nav></div></header>'+
+   '<nav class="nav" aria-label="Main">'+acct+(authed?'<button class="navlink" data-act="bookings">'+icon("calendar")+'<span class="lbl2">'+(isAdmin()?'All bookings':'My bookings')+'</span><span class="count num">'+n+'</span></button>':'')+'</nav></div></header>'+
    (state.view==="home"||state.view==="gate"?"":'<div class="pricebar"><div class="wrap pb-in"><span class="pb-lbl">'+icon("tag","sm")+' Nationality</span><div class="seg wide" role="group" aria-label="Nationality"><button data-act="cur" data-cur="EGP" aria-pressed="'+(state.currency==="EGP")+'">Egyptian <b>EGP</b></button><button data-act="cur" data-cur="USD" aria-pressed="'+(state.currency==="USD")+'">Non-Egyptian or company <b>USD</b></button></div></div></div>');
 }
 function renderFooter(){
@@ -802,7 +816,7 @@ function stepsBar(n){
 }
 function fieldErr(id){ return '<p class="err" id="e-'+id+'" role="alert">'+esc(state.errors[id]||"")+'</p>'; }
 function viewCheckout(){
-  var l=state.sel, q=quote(l,state.guests,state.hours), f=state.form, T=TYPES[l.type], eg=state.currency==="EGP", s=state.session, ag=isAgent();
+  var l=state.sel, q=quote(l,state.guests,state.hours), f=state.form, T=TYPES[l.type], eg=state.currency==="EGP", s=state.session, ag=isAgent()||isAdmin();
   var role = l.type==="felucca"||l.type==="launch"?"captain":l.type==="carriage"?"driver":"guide";
   function inv(id){ return 'aria-invalid="'+!!state.errors[id]+'"'; }
   return '<div class="wrap"><div class="crumb"><button class="linkbtn" data-act="back-detail">'+icon("back")+' Change time or hours</button></div>'+stepsBar(2)+
@@ -835,6 +849,31 @@ function viewDone(){
 }
 function hoursUntil(b){ var p=b.date.split("-"), t=b.slot.split(":"); return (new Date(+p[0],+p[1]-1,+p[2],+t[0],+t[1]).getTime()-Date.now())/36e5; }
 function viewBookings(){
+  if(isAdmin()){
+    var all=state.bookings;
+    var conf=all.filter(function(b){return b.status==="confirmed";});
+    var egpT=conf.filter(function(b){return b.cur==="EGP";}).reduce(function(s,b){return s+b.total;},0);
+    var usdT=conf.filter(function(b){return b.cur==="USD";}).reduce(function(s,b){return s+b.total;},0);
+    var stats='<div class="adm-stats">'+
+      '<div class="adm-stat"><span class="adm-n">'+all.length+'</span><span class="adm-l">Total bookings</span></div>'+
+      '<div class="adm-stat"><span class="adm-n">'+conf.length+'</span><span class="adm-l">Confirmed</span></div>'+
+      (egpT?'<div class="adm-stat"><span class="adm-n">'+fmtMoney(egpT,"EGP")+'</span><span class="adm-l">EGP revenue</span></div>':'')+
+      (usdT?'<div class="adm-stat"><span class="adm-n">'+fmtMoney(usdT,"USD")+'</span><span class="adm-l">USD revenue</span></div>':'')+
+      '</div>';
+    var abody=all.length?('<div class="cards" style="margin-top:22px">'+all.map(function(b){
+      var l=BYID[b.lid]||{id:b.lid,title:b.lid,operator:"",area:"",type:"felucca",mood:"warm",slots:[],hours:1}, T=TYPES[l.type]||{who:"guests"}, off=b.status!=="confirmed";
+      return '<article class="bk"><div class="mini">'+cover(l)+'</div><div class="in">'+
+        '<h3 style="font-size:1.15rem">'+esc(l.title)+'</h3>'+
+        '<p class="op">'+esc(l.operator)+', '+esc(l.area)+'</p>'+
+        '<div class="facts"><span>'+icon("calendar","sm")+fmtDate(b.date)+', '+fmtTime(b.slot)+'</span><span>'+icon("clock","sm")+hoursText(b.hours)+'</span><span>'+icon("users","sm")+plural(b.guests,T.who==="riders"?"rider":"guest",T.who)+'</span></div>'+
+        '<div class="facts"><span>'+icon("id","sm")+'Client: '+esc(b.name)+'</span><span>'+icon("pin","sm")+'From '+esc(b.pick||"—")+'</span></div>'+
+        (b.agency?'<p class="op" style="font-size:.85rem">'+icon("out")+'Agent: '+esc(b.agency)+(b.agent?' &middot; '+esc(b.agent):'')+'</p>':'')+
+        '<p><span class="ref" style="font-size:1rem;padding:3px 10px">'+esc(b.ref)+'</span></p>'+
+        '</div><div class="act">'+(off?'<span class="pill off">Cancelled</span>':'<span class="pill">Confirmed</span>')+'<b class="num" style="font-family:var(--font-display);font-size:1.2rem">'+fmtMoney(b.total,b.cur)+'</b></div></article>';
+    }).join("")+'</div>'):
+    '<div class="empty" style="margin-top:22px"><h3>No bookings yet</h3><p>Agent bookings will appear here once made.</p></div>';
+    return '<div class="wrap"><div class="page-h"><h1>All Bookings</h1><p class="op" style="margin-top:6px">Admin view — every booking made on FluTour.</p></div>'+stats+abody+'</div>';
+  }
   var list=myBookings().sort(function(a,b){return b.createdAt-a.createdAt;});
   var body;
   if(!list.length){
@@ -854,7 +893,7 @@ function viewBookings(){
 function render(){
   renderHeader();
   if(state.view==="loading"){ document.getElementById("app").innerHTML='<div style="display:flex;justify-content:center;align-items:center;min-height:60vh;color:var(--muted)"><p>Loading\u2026</p></div>'; return; }
-  if(state.view!=="gate" && !isAgent()) state.view="gate";
+  if(state.view!=="gate" && !isAgent() && !isAdmin()) state.view="gate";
   var v=state.view, html="";
   if(v==="gate") html=viewGate();
   else if(v==="home") html=flashHtml()+viewHome();
@@ -875,11 +914,11 @@ var app=document.getElementById("app");
 function onClick(e){
   var t=e.target.closest("[data-act]"); if(!t) return;
   var a=t.dataset.act, d=t.dataset;
-  if(a==="home"){ state.askCancel=null; go(isAgent()?"home":"gate"); }
+  if(a==="home"){ state.askCancel=null; go(isAgent()||isAdmin()?"home":"gate"); }
   else if(a==="gate"){ state.errors={}; go("gate"); }
   else if(a==="signout"){ state.errors={}; state.authTab="in"; auth.signOut(); }
   else if(a==="authtab"){ state.authTab=d.tab; state.errors={}; render(); }
-  else if(a==="bookings"){ state.askCancel=null; go(isAgent()?"bookings":"gate"); }
+  else if(a==="bookings"){ state.askCancel=null; go(isAgent()||isAdmin()?"bookings":"gate"); }
   else if(a==="cur"){ state.currency=d.cur; var y=window.scrollY; render(); window.scrollTo(0,y); }
   else if(a==="type"){ state.type=d.type; document.querySelectorAll(".tab").forEach(function(b){ b.setAttribute("aria-selected",String(b.dataset.type===state.type)); }); var lbl=document.getElementById("s-glbl"); if(lbl) lbl.textContent=whoLabel(); }
   else if(a==="browse"){ state.type=d.type; resetFilters(); go("results"); }
@@ -941,7 +980,7 @@ function onInput(e){
 }
 function makeRef(){ var s="", c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; for(var i=0;i<6;i++) s+=c.charAt(Math.floor(Math.random()*c.length)); return "FT-"+s; }
 function startSession(ag,isNew){
-  state.session={kind:"agent",email:ag.email,agency:ag.agency,rep:ag.rep};
+  state.session={kind:ag.role==="admin"?"admin":"agent",email:ag.email,agency:ag.agency,rep:ag.rep};
   state.auth={rep:"",agency:"",license:"",phone:"",email:""}; state.errors={}; state.authTab="in";
   state.flash=isNew?'Account created for '+esc(ag.agency)+'. Your IATA code will be verified before full approval.':null;
   go("home");
@@ -990,7 +1029,7 @@ function submitSignin(){
   }).then(function(doc){
     if(!doc.exists) throw new Error('no-profile');
     var ag=doc.data();
-    return loadBookings(ag.email).then(function(){ return ag; });
+    return (ag.role==="admin"?loadAllBookings():loadBookings(ag.email)).then(function(){ return ag; });
   }).then(function(ag){
     _authBusy=false;
     startSession(ag,false);
@@ -1020,7 +1059,7 @@ function onSubmit(e){
       var first=document.querySelector('[aria-invalid="true"]'); if(first) first.focus();
       return;
     }
-    var q=quote(l,state.guests,state.hours), s=state.session, ag=isAgent();
+    var q=quote(l,state.guests,state.hours), s=state.session, ag=isAgent()||isAdmin();
     var b={ref:makeRef(),lid:l.id,date:state.date,slot:state.slot,guests:state.guests,hours:state.hours,cur:state.currency,total:q.total,name:f.name.trim(),email:f.email.trim(),phone:f.phone.trim(),company:f.company.trim(),pick:f.pick.trim(),drop:f.drop.trim(),ptime:f.ptime,pay:state.pay,status:"confirmed",createdAt:Date.now(),agent:ag?s.email:"",agency:ag?s.agency:""};
     var T=TYPES[l.type]||{};
     var cbtn=document.querySelector('#checkout button[type="submit"]');
