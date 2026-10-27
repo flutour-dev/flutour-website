@@ -67,14 +67,17 @@ exports.handler = async function (event) {
   } else if (d.type === 'trip_request') {
     subject = 'New Trip Request — ' + (d.passengerName || d.passengerId);
     const rows =
-      row('Passenger',  d.passengerName, false) +
-      row('Vehicle',    d.vehicleType,   true)  +
-      row('From',       d.pickup,        false) +
-      row('To',         d.dropoff,       true)  +
-      row('Fare',       d.fare + ' EGP', false) +
-      row('Payment',    d.paymentMethod, true)  +
-      row('Passengers', d.passengerCount, false) +
-      row('Trip ID',    d.tripId,        true);
+      row('Passenger',    d.passengerName,           false) +
+      row('Nationality',  d.passengerNationality,    true)  +
+      row('Phone',        d.passengerPhone,           false) +
+      row('WhatsApp',     d.passengerWhatsapp || '—', true) +
+      row('Vehicle',      d.vehicleType,              false) +
+      row('From',         d.pickup,                   true)  +
+      row('To',           d.dropoff,                  false) +
+      row('Fare',         d.fare + ' EGP',            true)  +
+      row('Payment',      d.paymentMethod,            false) +
+      row('Passengers',   d.passengerCount,           true)  +
+      row('Trip ID',      d.tripId,                   false);
     html = wrap('New Trip Request',
       '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #D3DFF0;border-radius:10px;overflow:hidden">' +
       rows + '</table>'
@@ -82,21 +85,18 @@ exports.handler = async function (event) {
 
   } else if (d.type === 'trip_complete') {
     subject = 'Trip Completed — Receipt #' + (d.tripId || '').substring(0, 8).toUpperCase();
-    const driverEarning = Math.round((d.fare || 0) * 0.85);
-    const platformFee   = Math.round((d.fare || 0) * 0.15);
+    const driverEarning = Math.round((d.fare || 0) * 0.80);
+    const platformFee   = Math.round((d.fare || 0) * 0.20);
     const rows =
-      row('Trip ID',          '#' + (d.tripId || '').substring(0, 8).toUpperCase(), false) +
-      row('Passenger',        d.passengerName,  true)  +
-      row('Driver',           d.driverName,     false) +
-      row('Vehicle',          d.vehicleType,    true)  +
-      row('From',             d.pickup,         false) +
-      row('To',               d.dropoff,        true)  +
-      row('Payment',          d.paymentMethod,  false) +
+      row('Trip ID',  '#' + (d.tripId || '').substring(0, 8).toUpperCase(), false) +
+      row('Vehicle',  d.vehicleType,  true)  +
+      row('From',     d.pickup,       false) +
+      row('To',       d.dropoff,      true)  +
       '<tr style="background:#fff"><td style="padding:8px 14px;font-size:13px;color:#4B5F82">Total Fare</td>' +
       '<td style="padding:8px 14px;font-size:13px;font-weight:700;color:#0A1E45">' + Math.round(d.fare || 0) + ' EGP</td></tr>' +
-      '<tr style="background:#F8FAFD"><td style="padding:8px 14px;font-size:13px;color:#4B5F82">Driver (85%)</td>' +
+      '<tr style="background:#F8FAFD"><td style="padding:8px 14px;font-size:13px;color:#4B5F82">Driver (80%)</td>' +
       '<td style="padding:8px 14px;font-size:13px;font-weight:600;color:#0A1E45">' + driverEarning + ' EGP</td></tr>' +
-      '<tr style="background:#DDF4EA"><td style="padding:8px 14px;font-size:13px;color:#0B7A55;font-weight:700">Platform (15%)</td>' +
+      '<tr style="background:#DDF4EA"><td style="padding:8px 14px;font-size:13px;color:#0B7A55;font-weight:700">Platform (20%)</td>' +
       '<td style="padding:8px 14px;font-size:13px;font-weight:700;color:#0B7A55">' + platformFee + ' EGP</td></tr>';
     html = wrap('Trip Receipt',
       '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #D3DFF0;border-radius:10px;overflow:hidden">' +
