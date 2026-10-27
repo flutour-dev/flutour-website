@@ -87,10 +87,13 @@ exports.handler = async function (event) {
     const driverEarning = Math.round((d.fare || 0) * 0.80);
     const platformFee   = Math.round((d.fare || 0) * 0.20);
     const rows =
-      row('Trip ID',  '#' + (d.tripId || '').substring(0, 8).toUpperCase(), false) +
-      row('Vehicle',  d.vehicleType,  true)  +
-      row('From',     d.pickup,       false) +
-      row('To',       d.dropoff,      true)  +
+      row('Trip ID',    '#' + (d.tripId || '').substring(0, 8).toUpperCase(), false) +
+      row('Passenger',  d.passengerName,  true)  +
+      row('Driver',     d.driverName,     false) +
+      row('Vehicle',    d.vehicleType,    true)  +
+      row('From',       d.pickup,         false) +
+      row('To',         d.dropoff,        true)  +
+      row('Payment',    d.paymentMethod,  false) +
       '<tr style="background:#fff"><td style="padding:8px 14px;font-size:13px;color:#4B5F82">Total Fare</td>' +
       '<td style="padding:8px 14px;font-size:13px;font-weight:700;color:#0A1E45">' + Math.round(d.fare || 0) + ' EGP</td></tr>' +
       '<tr style="background:#F8FAFD"><td style="padding:8px 14px;font-size:13px;color:#4B5F82">Driver (80%)</td>' +
