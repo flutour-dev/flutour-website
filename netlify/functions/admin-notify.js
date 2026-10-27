@@ -54,8 +54,7 @@ exports.handler = async function (event) {
       row('Name',         d.name,        false) +
       row('Phone',        d.phone,       true)  +
       row('Vehicle Type', d.vehicleType, false) +
-      row('Vehicle ID',   d.vehicleId,   true)  +
-      row('InstaPay',     d.instapayPhone, false);
+      row('Vehicle ID',   d.vehicleId,   true);
     html = wrap('New Driver Registration',
       '<p style="margin:0 0 16px;font-size:15px;color:#4B5F82">A new driver has registered and is awaiting approval.</p>' +
       '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #D3DFF0;border-radius:10px;overflow:hidden">' +
