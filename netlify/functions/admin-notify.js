@@ -88,9 +88,10 @@ exports.handler = async function (event) {
     const platformFee   = Math.round((d.fare || 0) * 0.20);
     const rows =
       row('Trip ID',    '#' + (d.tripId || '').substring(0, 8).toUpperCase(), false) +
-      row('Passenger',  d.passengerName,  true)  +
-      row('Driver',     d.driverName,     false) +
-      row('Vehicle',    d.vehicleType,    true)  +
+      row('Passenger',     d.passengerName,  true)  +
+      row('Driver',        d.driverName,     false) +
+      row('Driver Phone',  d.driverPhone,    true)  +
+      row('Vehicle',       d.vehicleType,    false) +
       row('From',       d.pickup,         false) +
       row('To',         d.dropoff,        true)  +
       row('Payment',    d.paymentMethod,  false) +
