@@ -947,7 +947,9 @@ function viewBookings(){
         (usdT?'<div class="adm-stat"><span class="adm-n">'+fmtMoney(usdT,"USD")+'</span><span class="adm-l">USD revenue</span></div>':'')+
         '</div>';
       body=stats+(all.length?('<div class="cards" style="margin-top:22px">'+all.map(function(b){
-        var l=BYID[b.lid]||{id:b.lid,title:b.lid,operator:"",area:"",type:"felucca",mood:"warm",slots:[],hours:1},T=TYPES[l.type]||{who:"guests"},off=b.status!=="confirmed";
+        var tour=b.tour||{}, serviceType=tour.serviceType||b.serviceType||"felucca";
+        var fallbackType=serviceType==="hantour"?"carriage":(serviceType==="lansh"?"launch":"felucca");
+        var l=BYID[b.lid]||{id:b.lid,title:tour.productName||b.lid,operator:tour.serviceType?String(tour.serviceType).toUpperCase()+" custom tour":"Custom tour",area:"Luxor",type:fallbackType,mood:"day",slots:[],hours:1},T=TYPES[l.type]||{who:"guests"},off=b.status!=="confirmed";
         return '<article class="bk"><div class="mini">'+cover(l)+'</div><div class="in">'+
           '<h3 style="font-size:1.15rem">'+esc(l.title)+'</h3>'+
           '<p class="op">'+esc(l.operator)+', '+esc(l.area)+'</p>'+
