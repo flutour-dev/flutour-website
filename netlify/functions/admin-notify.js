@@ -64,20 +64,28 @@ exports.handler = async function (event) {
     );
 
   } else if (d.type === 'trip_request') {
-    subject = 'New Trip Request — ' + (d.passengerName || d.passengerId);
+    const isTour = d.bookingType === 'tour';
+    const amount = d.currency === 'USD'
+      ? '$' + (d.fare || '0.00')
+      : (d.fare || '0') + ' EGP';
+    subject = isTour
+      ? 'New Custom Tour Booking — ' + (d.productName || d.passengerName || d.passengerId)
+      : 'New Trip Request — ' + (d.passengerName || d.passengerId);
     const rows =
       row('Passenger',    d.passengerName,           false) +
       row('Nationality',  d.passengerNationality,    true)  +
       row('Phone',        d.passengerPhone,           false) +
       row('WhatsApp',     d.passengerWhatsapp || '—', true) +
-      row('Vehicle',      d.vehicleType,              false) +
+      row(isTour ? 'Tour' : 'Vehicle', isTour ? d.productName : d.vehicleType, false) +
+      (isTour ? row('Service', d.serviceType, true) : '') +
       row('From',         d.pickup,                   true)  +
       row('To',           d.dropoff,                  false) +
-      row('Fare',         d.fare + ' EGP',            true)  +
+      (isTour ? row('Scheduled', d.scheduledAt, true) : '') +
+      row('Fare',         amount,                     true)  +
       row('Payment',      d.paymentMethod,            false) +
       row('Passengers',   d.passengerCount,           true)  +
       row('Trip ID',      d.tripId,                   false);
-    html = wrap('New Trip Request',
+    html = wrap(isTour ? 'New Custom Tour Booking' : 'New Trip Request',
       '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #D3DFF0;border-radius:10px;overflow:hidden">' +
       rows + '</table>'
     );
